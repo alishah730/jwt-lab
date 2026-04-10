@@ -218,12 +218,47 @@ export function buildEncodeCommand(): Command {
         // 10. Load private key file if --key is provided.
         let privateKeyPem: string | undefined;
         if (opts.key !== undefined) {
-          // Sanitize the path: check for null bytes and resolve to an absolute
-          // normalized path to prevent path traversal via sequences like "../../../".
-          if (opts.key.includes("\0")) {
+          // Snyk path-traversal mitigation (https://learn.snyk.io/lesson/directory-traversal/):
+          //
+          // Step 1 — Decode URL-encoded sequences before resolving.
+          //   A naive path.resolve() alone can be bypassed by encoding dots as %2e
+          //   (e.g. %2e%2e%2f decodes to ../). Decoding first ensures normalization
+          //   operates on the real characters.
+          let decodedKey: string;
+          try {
+            decodedKey = decodeURIComponent(opts.key);
+          } catch {
+            exitWithError("Invalid key file path: malformed URL encoding.");
+            return; // satisfy TS control-flow — exitWithError never returns
+          }
+
+          // Step 2 — Reject null bytes, which can truncate paths at the OS level.
+          if (decodedKey.includes("\0")) {
             exitWithError("Invalid key file path: null bytes are not allowed.");
           }
-          const resolvedKeyPath = path.resolve(opts.key);
+
+          // Step 3 — Resolve to a canonical absolute path, collapsing all ../ sequences.
+          const resolvedKeyPath = path.resolve(decodedKey);
+
+          // Step 4 — Verify the canonical path stays within an allowed base directory.
+          //   For a CLI tool, users may legitimately store keys anywhere, so we
+          //   constrain to paths reachable from the user's home directory OR cwd.
+          //   Absolute paths outside those roots (e.g. /etc/passwd) are rejected.
+          const allowedRoots = [
+            path.resolve(process.env["HOME"] ?? "/"),
+            path.resolve(process.cwd()),
+          ];
+          const withinAllowedRoot = allowedRoots.some((root) =>
+            resolvedKeyPath.startsWith(root + path.sep) ||
+            resolvedKeyPath === root,
+          );
+          if (!withinAllowedRoot) {
+            exitWithError(
+              "Key file path must be within your home directory or the current working directory.",
+            );
+          }
+
+          // Step 5 — Extension allowlist as a last line of defence.
           const ext = path.extname(resolvedKeyPath).toLowerCase();
           const allowedExtensions = [".pem", ".key", ".jwk", ".json", ""];
           if (!allowedExtensions.includes(ext)) {
@@ -231,10 +266,15 @@ export function buildEncodeCommand(): Command {
               `Invalid key file extension "${ext}". Allowed: .pem, .key, .jwk, .json`,
             );
           }
+
+          // Step 6 — Read the file. Error message uses only the basename to avoid
+          //   leaking the resolved path back to the caller.
           try {
             privateKeyPem = fs.readFileSync(resolvedKeyPath, "utf8");
           } catch {
-            exitWithError(`Could not read key file: "${path.basename(resolvedKeyPath)}"`);
+            exitWithError(
+              `Could not read key file: "${path.basename(resolvedKeyPath)}"`,
+            );
           }
         }
 
