@@ -1,0 +1,73 @@
+# jwt-lab Configuration File
+# Place this file as `.jwt-cli.toml` in your project root.
+# The CLI will auto-discover it by walking upward from the CWD.
+
+# ─────────────────────────────────────────────────────────────
+# Default claim values applied to every `jwt encode` command.
+# CLI flags always override these defaults.
+# ─────────────────────────────────────────────────────────────
+[defaults]
+iss = "https://auth.myapp.com/"
+aud = "myapp-api"
+alg = "ES256"
+# jwks = "https://auth.myapp.com/.well-known/jwks.json"
+
+# ─────────────────────────────────────────────────────────────
+# Named key references.
+# Use `--key my-es256-key` to reference a key by name.
+# ─────────────────────────────────────────────────────────────
+[keys.my-es256-key]
+type = "ec"
+privateKeyPath = "./keys/private.pem"
+publicKeyPath  = "./keys/public.pem"
+
+[keys.my-rsa-key]
+type = "rsa"
+privateKeyPath = "./keys/rsa-private.pem"
+publicKeyPath  = "./keys/rsa-public.pem"
+
+# ─────────────────────────────────────────────────────────────
+# Named profiles — presets for common token patterns.
+# Use `jwt encode --profile access_token '{"sub":"user1"}'`
+# ─────────────────────────────────────────────────────────────
+[profiles.access_token]
+ttl    = "15m"
+scopes = ["read", "write"]
+
+[profiles.refresh_token]
+ttl    = "7d"
+scopes = ["refresh"]
+
+[profiles.service_token]
+ttl = "1h"
+aud = "internal-service"
+
+# ─────────────────────────────────────────────────────────────
+# Linter configuration — tune security rules to your needs.
+# ─────────────────────────────────────────────────────────────
+[lint]
+# Disable rules by ID (uncomment to disable):
+# disabledRules = ["hmac-preferred-asymmetric"]
+
+# Override severity for specific rules:
+[lint.severityOverrides]
+"missing-exp" = "error"
+
+# Custom PII claim patterns (added to defaults):
+piiClaimPatterns = ["email", "phone", "ssn", "address", "name", "dob", "birthdate"]
+
+# ─────────────────────────────────────────────────────────────
+# MCP Server configuration
+# ─────────────────────────────────────────────────────────────
+[mcp]
+port = 3000
+host = "0.0.0.0"
+allowedOrigins = ["*"]
+
+# Claims to redact from MCP responses (privacy):
+redactClaims = ["email", "phone"]
+
+# Rate limiting:
+[mcp.rateLimit]
+windowSeconds = 60
+maxRequests   = 100

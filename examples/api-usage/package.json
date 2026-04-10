@@ -1,0 +1,22 @@
+{
+  "name": "jwt-lab-api-usage",
+  "version": "1.0.0",
+  "description": "Programmatic API usage examples for jwt-lab",
+  "type": "module",
+  "scripts": {
+    "start": "tsx src/index.ts",
+    "oidc-inspect": "tsx src/oidc-inspect.ts",
+    "inspect-local": "tsx src/inspect-local.ts",
+    "verify-asymmetric": "tsx src/verify-asymmetric.ts",
+    "nlp-encode": "tsx src/nlp-encode.ts",
+    "typecheck": "tsc --noEmit"
+  },
+  "dependencies": {
+    "jwt-lab": "file:../.."
+  },
+  "devDependencies": {
+    "@types/node": "^22.0.0",
+    "tsx": "^4.19.2",
+    "typescript": "^5.8.3"
+  }
+}

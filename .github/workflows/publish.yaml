@@ -1,0 +1,40 @@
+name: Publish Package
+
+on:
+  push:
+    tags:
+      - 'v*'
+
+permissions:
+  id-token: write  # Required for OIDC
+  contents: read
+
+jobs:
+  publish:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v6
+
+      - uses: actions/setup-node@v6
+        with:
+          node-version: '24'
+          registry-url: 'https://registry.npmjs.org'
+      - name: Update package version from tag
+        run: |
+            TAG_VERSION=${GITHUB_REF#refs/tags/v}
+            npm version "$TAG_VERSION" --no-git-tag-version --allow-same-version
+            echo "Updated package.json to version $TAG_VERSION"
+      - run: npm ci
+      - run: npm run build --if-present
+      - run: npm test
+      - name: Publish to npm
+        run: |
+            TAG_VERSION=${GITHUB_REF#refs/tags/v}
+            if [[ $TAG_VERSION =~ -[a-zA-Z] ]]; then
+            PRERELEASE_TAG=$(echo "$TAG_VERSION" | sed -n 's/.*-\([a-zA-Z][a-zA-Z0-9]*\).*/\1/p')
+            echo "Publishing prerelease version $TAG_VERSION with tag: $PRERELEASE_TAG"
+            npm publish --tag "$PRERELEASE_TAG"
+            else
+            echo "Publishing stable version $TAG_VERSION"
+            npm publish
+            fi
