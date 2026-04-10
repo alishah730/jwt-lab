@@ -4,6 +4,7 @@
  */
 import { Command } from "commander";
 import * as fs from "node:fs";
+import * as path from "node:path";
 import { encodeToken } from "../../core/encode.js";
 import { parseNaturalLanguagePayload } from "../../core/nlp.js";
 import { parseDuration } from "../../core/duration.js";
@@ -217,11 +218,23 @@ export function buildEncodeCommand(): Command {
         // 10. Load private key file if --key is provided.
         let privateKeyPem: string | undefined;
         if (opts.key !== undefined) {
+          // Sanitize the path: check for null bytes and resolve to an absolute
+          // normalized path to prevent path traversal via sequences like "../../../".
+          if (opts.key.includes("\0")) {
+            exitWithError("Invalid key file path: null bytes are not allowed.");
+          }
+          const resolvedKeyPath = path.resolve(opts.key);
+          const ext = path.extname(resolvedKeyPath).toLowerCase();
+          const allowedExtensions = [".pem", ".key", ".jwk", ".json", ""];
+          if (!allowedExtensions.includes(ext)) {
+            exitWithError(
+              `Invalid key file extension "${ext}". Allowed: .pem, .key, .jwk, .json`,
+            );
+          }
           try {
-            privateKeyPem = fs.readFileSync(opts.key, "utf8");
-          } catch (e) {
-            const msg = e instanceof Error ? e.message : String(e);
-            exitWithError(`Could not read key file "${opts.key}": ${msg}`);
+            privateKeyPem = fs.readFileSync(resolvedKeyPath, "utf8");
+          } catch {
+            exitWithError(`Could not read key file: "${path.basename(resolvedKeyPath)}"`);
           }
         }
 
