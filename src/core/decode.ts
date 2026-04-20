@@ -1,6 +1,35 @@
 import { type Result, type DecodedToken, type DecodeError, ok, err } from "./types.js";
 
 /**
+ * Decodes a base64url-encoded string to a UTF-8 string.
+ * Uses `atob()` + `TextDecoder` which are available in all modern
+ * browsers **and** Node.js ≥ 16, making the library universal
+ * (no Node.js `Buffer` dependency).
+ */
+function base64UrlDecode(str: string): string {
+  // base64url → standard base64
+  let base64 = str.replace(/-/g, "+").replace(/_/g, "/");
+
+  // Add padding
+  switch (base64.length % 4) {
+    case 2:
+      base64 += "==";
+      break;
+    case 3:
+      base64 += "=";
+      break;
+  }
+
+  // Decode via atob → Uint8Array → TextDecoder (handles multi-byte UTF-8)
+  const binary = atob(base64);
+  const bytes = new Uint8Array(binary.length);
+  for (let i = 0; i < binary.length; i++) {
+    bytes[i] = binary.charCodeAt(i);
+  }
+  return new TextDecoder().decode(bytes);
+}
+
+/**
  * Base64url-decodes a segment and parses it as JSON.
  *
  * @param segment - A base64url-encoded string.
@@ -13,7 +42,7 @@ function decodeSegment(
 ): Record<string, unknown> | DecodeError {
   let json: string;
   try {
-    json = Buffer.from(segment, "base64url").toString("utf8");
+    json = base64UrlDecode(segment);
   } catch {
     return { message: `Failed to base64url-decode ${label} segment`, code: "MALFORMED" };
   }

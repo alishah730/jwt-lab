@@ -9,6 +9,7 @@
     "inspect-local": "tsx src/inspect-local.ts",
     "verify-asymmetric": "tsx src/verify-asymmetric.ts",
     "nlp-encode": "tsx src/nlp-encode.ts",
+    "decode-token": "tsx src/decode-token.ts",
     "typecheck": "tsc --noEmit"
   },
   "dependencies": {
