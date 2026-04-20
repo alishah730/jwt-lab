@@ -1,6 +1,6 @@
 {
   "name": "jwt-lab",
-  "version": "0.0.7",
+  "version": "0.0.9",
   "description": "jwt-lab – A fast, secure, beautiful JWT CLI tool and MCP server for developers & AI agents. Encode, decode, verify, inspect, audit, and generate keys for JSON Web Tokens.",
   "bin": {
     "jwt": "dist/cli.js"
